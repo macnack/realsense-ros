@@ -1,4 +1,4 @@
-# Copyright 2023 Intel Corporation. All Rights Reserved.
+# Copyright (c) 2020 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,40 +16,38 @@
 import os
 import launch
 from launch_ros.actions import Node
-import launch.events
 from ament_index_python.packages import get_package_share_directory
 import sys
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from launch_utils import to_urdf
 
-
 def generate_launch_description():
     available_urdf_files = [f for f in os.listdir(os.path.join(get_package_share_directory('realsense2_description'), 'urdf')) if f.startswith('test_')]
-    params = dict([aa for aa in [aa.split(':=') for aa in sys.argv] if len(aa) == 2])
+    params = dict([aa for aa in [aa.split(':=') for aa in sys.argv] if len(aa)==2])
     if ('model' not in params or params['model'] not in available_urdf_files):
-        print('USAGE:')
-        print('ros2 launch realsense2_description view_model.launch.py model:=<model>')
-        print('Available argumants for <model> are as follows:')
-        print('\n'.join(available_urdf_files))
-        return launch.LaunchDescription()
+        print ('USAGE:')
+        print ('ros2 launch realsense2_description view_model.launch.py model:=<model>')
+        print ('Available argumants for <model> are as follows:')
+        print ('\n'.join(available_urdf_files))
+        exit(-1)
 
     rviz_config_dir = os.path.join(get_package_share_directory('realsense2_description'), 'rviz', 'urdf.rviz')
     xacro_path = os.path.join(get_package_share_directory('realsense2_description'), 'urdf', params['model'])
-    urdf = to_urdf(xacro_path, {'use_nominal_extrinsics': 'true', 'add_plug': 'true'})
+    urdf = to_urdf(xacro_path, {'use_nominal_extrinsics' : 'true', 'add_plug' : 'true'})
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
-        name='rviz2',
-        output='screen',
+        node_name='rviz2',
+        output = 'screen',
         arguments=['-d', rviz_config_dir],
         parameters=[{'use_sim_time': False}]
         )
     model_node = Node(
-        name='model_node',
+        node_name='model_node',
         package='robot_state_publisher',
         executable='robot_state_publisher',
         namespace='',
         output='screen',
-        arguments=[urdf]
+        arguments = [urdf]
         )
     return launch.LaunchDescription([rviz_node, model_node])

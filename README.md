@@ -1,585 +1,322 @@
-<h1 align="center">
-   <img src="https://www.intelrealsense.com/wp-content/uploads/2020/09/intel-realsense-logo-360px.png" alt="Intel® RealSense™" title="Intel® RealSense™" />
-</h1>
+# ROS2 Wrapper for Intel&reg; RealSense&trade; Devices
+These are packages for using Intel RealSense cameras (D400 and L500 series, SR300 camera and T265 Tracking Module) with ROS2.
 
-<p align="center">
-  ROS2 packages for using Intel RealSense D400 cameras.<br>
-  <a href="https://github.com/IntelRealSense/realsense-ros/releases">Latest release notes</a>
-</p>
+LibRealSense supported version: v2.50.0 (see [realsense2_camera release notes](https://github.com/IntelRealSense/realsense-ros/releases))
 
-<hr>
+## Installation Instructions
+This version supports ROS2 Dashing, Eloquent and Foxy.
 
+   ### Step 1: Install the ROS2 distribution
+   - #### Install [ROS2 Dashing](https://docs.ros.org/en/dashing/Installation/Ubuntu-Install-Debians.html), on Ubuntu 18.04 or [ROS2 Foxy](https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html) or [ROS2 Galactic](https://docs.ros.org/en/galactic/Installation/Ubuntu-Install-Debians.html), on Ubuntu 20.04
 
-[![rolling][rolling-badge]][rolling]
-[![iron][iron-badge]][iron]
-[![humble][humble-badge]][humble]
-[![ubuntu22][ubuntu22-badge]][ubuntu22]
-[![ubuntu20][ubuntu20-badge]][ubuntu20]
+### There are 2 sources to install realsense2_camera from:
 
-![GitHubWorkflowStatus](https://img.shields.io/github/actions/workflow/status/IntelRealSense/realsense-ros/main.yml?logo=github&style=flat-square)
-[![GitHubcontributors](https://img.shields.io/github/contributors/IntelRealSense/realsense-ros?style=flat-square)](CONTRIBUTING.md)
-[![License](https://img.shields.io/github/license/IntelRealSense/realsense-ros?style=flat-square)](LICENSE)
+* ### Method 1: The ROS distribution:
 
-<hr>
+  *Ubuntu*
 
-## Table of contents
-  * [ROS1 and ROS2 legacy](#ros1-and-ros2-legacy)
-  * [Installation](#installation)
-  * [Usage](#usage)
-     * [Starting the camera node](#start-the-camera-node)
-     * [Camera name and namespace](#camera-name-and-camera-namespace)
-     * [Parameters](#parameters)
-     * [ROS2-vs-Optical Coordination Systems](#ros2robot-vs-opticalcamera-coordination-systems)
-     * [TF from coordinate A to coordinate B](#tf-from-coordinate-a-to-coordinate-b)
-     * [Extrinsics from sensor A to sensor B](#extrinsics-from-sensor-a-to-sensor-b)
-     * [Topics](#published-topics)
-     * [RGBD Topic](#rgbd-topic)
-     * [Metadata Topic](#metadata-topic)
-     * [Post-Processing Filters](#post-processing-filters)
-     * [Available Services](#available-services)
-     * [Efficient intra-process communication](#efficient-intra-process-communication)
-  * [Contributing](CONTRIBUTING.md)
-  * [License](LICENSE)
-
-<hr>
-
-# ROS1 and ROS2 Legacy
-
-<details>
-  <summary>
-    Intel RealSense ROS1 Wrapper
-  </summary>
-    Intel Realsense ROS1 Wrapper is not supported anymore, since our developers team are focusing on ROS2 distro.<br>
-    For ROS1 wrapper, go to <a href="https://github.com/IntelRealSense/realsense-ros/tree/ros1-legacy">ros1-legacy</a> branch
-</details>
-
-<details>
-   <summary>
-     Moving from <a href="https://github.com/IntelRealSense/realsense-ros/tree/ros2-legacy">ros2-legacy</a> to ros2-development
-  </summary>
-
-* Changed Parameters:
-    - **"stereo_module"**, **"l500_depth_sensor"** are replaced by **"depth_module"**
-    - For video streams: **\<module>.profile** replaces **\<stream>_width**, **\<stream>_height**, **\<stream>_fps**
-        - **ROS2-legacy (Old)**:
-          - ros2 launch realsense2_camera rs_launch.py depth_width:=640 depth_height:=480 depth_fps:=30.0 infra1_width:=640 infra1_height:=480 infra1_fps:=30.0
-        - **ROS2-development (New)**:
-          - ros2 launch realsense2_camera rs_launch.py depth_module.profile:=640x480x30
-    - Removed paramets **\<stream>_frame_id**, **\<stream>_optical_frame_id**. frame_ids are now defined by camera_name
-    - **"filters"** is removed. All filters (or post-processing blocks) are enabled/disabled using **"\<filter>.enable"**
-    - **"align_depth"** is now a regular processing block and as such the parameter for enabling it is replaced with **"align_depth.enable"**
-    - **"allow_no_texture_points"**, **"ordered_pc"** are now belong to the pointcloud filter and as such are replaced by **"pointcloud.allow_no_texture_points"**, **"pointcloud.ordered_pc"**
-    - **"pointcloud_texture_stream"**, **"pointcloud_texture_index"** belong now to the pointcloud filter and were renamed to match their librealsense' names: **"pointcloud.stream_filter"**, **"pointcloud.stream_index_filter"**
-- Allow enable/disable of sensors in runtime (parameters **\<stream>.enable**)
-- Allow enable/disable of filters in runtime (parameters **\<filter_name>.enable**)
-- **unite_imu_method** parameter is now changeable in runtime.
-- **enable_sync** parameter is now changeable in runtime.
-
-</details>
+    realsense2_camera is available as a debian package of ROS distribution. It can be installed by typing:
     
+    ```sudo apt-get install ros-$ROS_DISTRO-realsense2-camera```
 
-# Installation
-  
-<details>
-  <summary>
-    Step 1: Install the ROS2 distribution 
-  </summary>
-  
-- #### Ubuntu 22.04:
-  - [ROS2 Iron](https://docs.ros.org/en/iron/Installation/Ubuntu-Install-Debians.html)
-  - [ROS2 Humble](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)
-    
-</details>
-  
-<details>
-  <summary>
-    Step 2: Install latest Intel&reg; RealSense&trade; SDK 2.0
-  </summary>
-  
-- #### Option 1: Install librealsense2 debian package from Intel servers
-  - Jetson users - use the [Jetson Installation Guide](https://github.com/IntelRealSense/librealsense/blob/master/doc/installation_jetson.md)
-  - Otherwise, install from [Linux Debian Installation Guide](https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md#installing-the-packages)
-    - In this case treat yourself as a developer: make sure to follow the instructions to also install librealsense2-dev and librealsense2-dkms packages
-  
-- #### Option 2: Install librealsense2 (without graphical tools and examples) debian package from ROS servers:
-  - [Configure](http://wiki.ros.org/Installation/Ubuntu/Sources) your Ubuntu repositories
-  - Install all realsense ROS packages by ```sudo apt install ros-<ROS_DISTRO>-librealsense2*```
-    - For example, for Humble distro: ```sudo apt install ros-humble-librealsense2*```
+    This will install both realsense2_camera and its dependents, including librealsense2 library and matching udev-rules.
 
-- #### Option 3: Build from source
-  - Download the latest [Intel&reg; RealSense&trade; SDK 2.0](https://github.com/IntelRealSense/librealsense/releases/tag/v2.53.1)
-  - Follow the instructions under [Linux Installation](https://github.com/IntelRealSense/librealsense/blob/master/doc/installation.md)
+    Notice:
+    * The version of librealsense2 is almost always behind the one availeable in RealSense&trade; official repository.
+    * librealsense2 is not built to use native v4l2 driver but the less stable RS-USB protocol. That is because the RS-USB protocol is more general and operational on a larger variety of platforms. This have limitations when running multiple cameras and when using T265.
+    * realsense2_description is available as a separate debian package of ROS distribution. It includes the 3D-models of the devices and is necessary for running launch files that include these models (i.e. view_model.launch.py). It can be installed by typing:
+    `sudo apt-get install ros-$ROS_DISTRO-realsense2-description`
 
-</details>
-  
-<details>
-  <summary>
-    Step 3: Install Intel&reg; RealSense&trade; ROS2 wrapper
-  </summary>
-  
-#### Option 1: Install debian package from ROS servers
-  - [Configure](http://wiki.ros.org/Installation/Ubuntu/Sources) your Ubuntu repositories
-  - Install all realsense ROS packages by ```sudo apt install ros-<ROS_DISTRO>-realsense2-*```
-  - For example, for Humble distro: ```sudo apt install ros-humble-realsense2-*```
-  
-#### Option 2: Install from source
-  
-  - Create a ROS2 workspace
-      ```bash
-      mkdir -p ~/ros2_ws/src
-      cd ~/ros2_ws/src/
-      ```
-  
-  - Clone the latest ROS2 Intel&reg; RealSense&trade;  wrapper from [here](https://github.com/IntelRealSense/realsense-ros.git) into '~/ros2_ws/src/'
-      ```bashrc
-      git clone https://github.com/IntelRealSense/realsense-ros.git -b ros2-development
-      cd ~/ros2_ws
-      ```
-  
-  - Install dependencies
+* ### Method 2: The RealSense&trade; distribution:
+     > This option is demonstrated in the [.travis.yml](https://github.com/IntelRealSense/realsense-ros/blob/ros2-legacy/.travis.yml) file. It basically summerize the elaborate instructions in the following 2 steps:
+
+
+   ### Step 1: Install the latest Intel&reg; RealSense&trade; SDK 2.0
+
+    Install librealsense2 debian package:
+    * Jetson users - use the [Jetson Installation Guide](https://github.com/IntelRealSense/librealsense/blob/master/doc/installation_jetson.md)
+    * Otherwise, install from [Linux Debian Installation Guide](https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md#installing-the-packages)
+      - In that case treat yourself as a developer. Make sure you follow the instructions to also install librealsense2-dev and librealsense2-dkms packages.
+
+
+   #### OR
+   - #### Build from sources by downloading the latest [Intel&reg; RealSense&trade; SDK 2.0](https://github.com/IntelRealSense/librealsense/releases/tag/v2.50.0) and follow the instructions under [Linux Installation](https://github.com/IntelRealSense/librealsense/blob/master/doc/installation.md)
+
+
+   ### Step 3: Install Intel&reg; RealSense&trade; ROS2 wrapper from Sources
+   - Create a ROS2 workspace
    ```bash
-   sudo apt-get install python3-rosdep -y
-   sudo rosdep init # "sudo rosdep init --include-eol-distros" for Foxy and earlier
-   rosdep update # "sudo rosdep update --include-eol-distros" for Foxy and earlier
-   rosdep install -i --from-path src --rosdistro $ROS_DISTRO --skip-keys=librealsense2 -y
+   mkdir -p ~/ros2_ws/src
+   cd ~/ros2_ws/src/
    ```
-
-  - Build
-   ```bash
-   colcon build
-   ```
-
-  -  Source environment
-   ```bash
-   ROS_DISTRO=<YOUR_SYSTEM_ROS_DISTRO>  # set your ROS_DISTRO: iron, humble
-   source /opt/ros/$ROS_DISTRO/setup.bash
+   - Clone the latest ROS2 Intel&reg; RealSense&trade;  wrapper from [here](https://github.com/IntelRealSense/realsense-ros.git) into '~/ros2_ws/src/'
+   ```bashrc
+   git clone --depth 1 --branch `git ls-remote --tags https://github.com/IntelRealSense/realsense-ros.git | grep -Po "(?<=tags/)3.\d+\.\d+" | sort -V | tail -1` https://github.com/IntelRealSense/realsense-ros.git
    cd ~/ros2_ws
-   . install/local_setup.bash
    ```
-  
-  </details>
 
-<hr>
-
-# Usage
-
-## Start the camera node
-  
-  #### with ros2 run:
-    ros2 run realsense2_camera realsense2_camera_node
-    # or, with parameters, for example - temporal and spatial filters are enabled:
-    ros2 run realsense2_camera realsense2_camera_node --ros-args -p enable_color:=false -p spatial_filter.enable:=true -p temporal_filter.enable:=true
-  
-  #### with ros2 launch:
-    ros2 launch realsense2_camera rs_launch.py
-    ros2 launch realsense2_camera rs_launch.py depth_module.profile:=1280x720x30 pointcloud.enable:=true
-
-<hr>
-
-## Camera Name And Camera Namespace
-
-User can set the camera name and camera namespace, to distinguish between cameras and platforms, which helps identifying the right nodes and topics to work with.
-
-### Example
-- If user have multiple cameras (might be of the same model) and multiple robots then user can choose to launch/run his nodes on this way.
-- For the first robot and first camera he will run/launch it with these parameters:
-  - camera_namespace:
-    - robot1
-  - camera_name
-    - D455_1
-  
-  - With ros2 launch (via command line or by editing these two parameters in the launch file):
-    
-  ```ros2 launch realsense2_camera rs_launch.py camera_namespace:=robot1 camera_name:=D455_1```
-    
-  - With ros2 run (using remapping mechanisim [Reference](https://docs.ros.org/en/humble/How-To-Guides/Node-arguments.html)):
-    
-  ```ros2 run realsense2_camera realsense2_camera_node --ros-args -r __node:=D455_1 -r __ns:=robot1```
-
-  - Result
-  ```
-  > ros2 node list
-  /robot1/D455_1
-  
-  > ros2 topic list
-  /robot1/D455_1/color/camera_info
-  /robot1/D455_1/color/image_raw
-  /robot1/D455_1/color/metadata
-  /robot1/D455_1/depth/camera_info
-  /robot1/D455_1/depth/image_rect_raw
-  /robot1/D455_1/depth/metadata
-  /robot1/D455_1/extrinsics/depth_to_color
-  /robot1/D455_1/imu
-  
-  > ros2 service list
-  /robot1/D455_1/device_info
+  ### Step 4: Install dependencies:
+   ```bash
+  sudo apt-get install python3-rosdep -y
+  sudo rosdep init # "sudo rosdep init --include-eol-distros" for Dashing
+  rosdep update
+  rosdep install -i --from-path src --rosdistro $_ros_dist --skip-keys=librealsense2 -y
   ```
 
-### Default behavior if non of these parameters are given:
-  - camera_namespace:=camera
-  - camera_name:=camera
+  ### Step 5: Build:
+  ```bash
+  colcon build
+  ```
 
+  ### Step 6: Source (on each new terminal):
+  ```bash
+  . install/local_setup.bash
+  ```
+
+
+## Usage Instructions
+
+### Start the camera node
+To start the camera node in ROS:
+
+```bash
+  ros2 launch realsense2_camera rs_launch.py
 ```
-> ros2 node list
-/camera/camera
-
-> ros2 topic list
-/camera/camera/color/camera_info
-/camera/camera/color/image_raw
-/camera/camera/color/metadata
-/camera/camera/depth/camera_info
-/camera/camera/depth/image_rect_raw
-/camera/camera/depth/metadata
-/camera/camera/extrinsics/depth_to_color
-/camera/camera/imu
-
-> ros2 service list
-/camera/camera/device_info
+or, with parameters specified in rs_launch.py, for example - pointcloud enabled:
+```bash
+ros2 launch realsense2_camera rs_launch.py enable_pointcloud:=true device_type:=d435
 ```
-
-<hr>
-
-## Parameters
-
-### Available Parameters:
-- For the entire list of parameters type `ros2 param list`.
-- For reading a parameter value use `ros2 param get <node> <parameter_name>` 
-  - For example: `ros2 param get /camera/camera depth_module.emitter_enabled`
-- For setting a new value for a parameter use `ros2 param set <node> <parameter_name> <value>`
-  - For example: `ros2 param set /camera/camera depth_module.emitter_enabled 1`
-
-#### Parameters that can be modified during runtime:
-- All of the filters and sensors inner parameters.
-- Video Sensor Parameters: (```depth_module``` and ```rgb_camera```)
-  - They have, at least, the **profile** parameter.
-    - The profile parameter is a string of the following format: \<width>X\<height>X\<fps> (The dividing character can be X, x or ",". Spaces are ignored.)
-    - For example: ```depth_module.profile:=640x480x30 rgb_camera.profile:=1280x720x30```
-    - Since infra, infra1, infra2 and depth are all streams of the depth_module, their width, height and fps are defined by the same param **depth_module.profile**
-    - If the specified combination of parameters is not available by the device, the default or previously set configuration will be used.
-      - Run ```ros2 param describe <your_node_name> <param_name>``` to get the list of supported profiles.
-    - Note: Should re-enable the stream for the change to take effect.
-  - ***<stream_name>*_format**
-    - This parameter is a string used to select the stream format.
-    - <stream_name> can be any of *infra, infra1, infra2, color, depth*.
-    - For example: ```depth_module.depth_format:=Z16 depth_module.infra1_format:=y8 rgb_camera.color_format:=RGB8```
-    - This parameter supports both lower case and upper case letters.
-    - If the specified parameter is not available by the stream, the default or previously set configuration will be used.
-      - Run ```ros2 param describe <your_node_name> <param_name>``` to get the list of supported formats.
-    - Note: Should re-enable the stream for the change to take effect.
-  - If the stream doesn't support the user selected profile \<width>X\<height>X\<fps> + \<format>, it will not be opened and a warning message will be shown.
-    - Should update the profile settings and re-enable the stream for the change to take effect.
-    - Run ```rs-enumerate-devices``` command to know the list of profiles supported by the connected sensors.
-- **enable_*<stream_name>***: 
-  - Choose whether to enable a specified stream or not. Default is true for images and false for orientation streams.
-  - <stream_name> can be any of *infra, infra1, infra2, color, depth, gyro, accel*.
-  - For example: ```enable_infra1:=true enable_color:=false```
-- **enable_sync**:
-  - gathers closest frames of different sensors, infra red, color and depth, to be sent with the same timetag.
-  - This happens automatically when such filters as pointcloud are enabled.
-- ***<stream_type>*_qos**: 
-  - Sets the QoS by which the topic is published.
-  - <stream_type> can be any of *infra, infra1, infra2, color, depth, gyro, accel*.
-  -  Available values are the following strings: `SYSTEM_DEFAULT`, `DEFAULT`, `PARAMETER_EVENTS`, `SERVICES_DEFAULT`, `PARAMETERS`, `SENSOR_DATA`.
-  - For example: ```depth_qos:=SENSOR_DATA```
-  - Reference: [ROS2 QoS profiles formal documentation](https://docs.ros.org/en/rolling/Concepts/About-Quality-of-Service-Settings.html#qos-profiles)
-- **Notice:** ***<stream_type>*_info_qos** refers to both camera_info topics and metadata topics.
-- **tf_publish_rate**: 
-  - double, rate (in Hz) at which dynamic transforms are published
-  - Default value is 0.0 Hz *(means no dynamic TF)*
-  - This param also depends on **publish_tf** param
-    - If **publish_tf:=false**, then no TFs will be published, even if **tf_publish_rate** is >0.0 Hz
-    - If **publish_tf:=true** and **tf_publish_rate** set to >0.0 Hz, then dynamic TFs will be published at the specified rate
-- **unite_imu_method**:
-  - For the D400 cameras with built in IMU components, below 2 unrelated streams (each with it's own frequency) will be created:
-    - *gyro* - which shows angular velocity 
-    - *accel* - which shows linear acceleration. 
-  - Both streams will publish data to its corresponding topics:
-    - '/camera/camera/gyro/sample' & '/camera/camera/accel/sample'
-    - Though both topics are of same message type 'sensor_msgs::Imu', only their relevant fields are filled out.
-  - A new topic called **imu** will be created, when both *accel* and *gyro* streams are enabled and the param *unite_imu_method* set to > 0.
-    - Data from both accel and gyro are combined and published to this topic
-    - All the fields of the Imu message are filled out.
-    - It will be published at the rate of the gyro.
-  - `unite_imu_method` param supports below values:
-    - 0 -> **none**: no imu topic
-    - 1 -> **copy**: Every gyro message will be attached by the last accel message.
-    - 2 -> **linear_interpolation**: Every gyro message will be attached by an accel message which is interpolated to gyro's timestamp.
-  - Note: When the param *unite_imu_method* is dynamically updated, re-enable either gyro or accel stream for the change to take effect.
-
-#### Parameters that cannot be changed in runtime:
-- **serial_no**:
-  - will attach to the device with the given serial number (*serial_no*) number.
-  - Default, attach to the first (in an inner list) RealSense device.
-  - Note: serial number should be defined with "_" prefix.
-    - That is a workaround until a better method will be found to ROS2's auto conversion of strings containing only digits into integers.
-  - Example: serial number 831612073525 can be set in command line as `serial_no:=_831612073525`. 
-- **usb_port_id**:
-  - will attach to the device with the given USB port (*usb_port_id*).
-  - For example: `usb_port_id:=4-1` or `usb_port_id:=4-2` 
-  - Default, ignore USB port when choosing a device.
-- **device_type**:
-  - will attach to a device whose name includes the given *device_type* regular expression pattern.
-  - Default, ignore device type.
-  - For example:
-    - `device_type:=d435` will match d435 and d435i.
-    - `device_type=d435(?!i)` will match d435 but not d435i.
-- **reconnect_timeout**:
-  - When the driver cannot connect to the device try to reconnect after this timeout (in seconds).
-  - For Example: `reconnect_timeout:=10`
-- **wait_for_device_timeout**: 
-  - If the specified device is not found, will wait *wait_for_device_timeout* seconds before exits.
-  - Defualt, *wait_for_device_timeout < 0*, will wait indefinitely.
-  - For example: `wait_for_device_timeout:=60`
-- **rosbag_filename**:
-  - Publish topics from rosbag file. There are two ways for loading rosbag file:
-   * Command line - ```ros2 run realsense2_camera realsense2_camera_node -p rosbag_filename:="/full/path/to/rosbag.bag"```
-   * Launch file - set ```rosbag_filename``` parameter with rosbag full path (see ```realsense2_camera/launch/rs_launch.py``` as reference) 
-- **initial_reset**:
-  - On occasions the device was not closed properly and due to firmware issues needs to reset. 
-  - If set to true, the device will reset prior to usage.
-  - For example: `initial_reset:=true`
-- **base_frame_id**: defines the frame_id all static transformations refers to.
-- **clip_distance**:
-  - Remove from the depth image all values above a given value (meters). Disable by giving negative value (default)
-  - For example: `clip_distance:=1.5`
-- **linear_accel_cov**, **angular_velocity_cov**: sets the variance given to the Imu readings.
-- **hold_back_imu_for_frames**: Images processing takes time. Therefor there is a time gap between the moment the image arrives at the wrapper and the moment the image is published to the ROS environment. During this time, Imu messages keep on arriving and a situation is created where an image with earlier timestamp is published after Imu message with later timestamp. If that is a problem, setting *hold_back_imu_for_frames* to *true* will hold the Imu messages back while processing the images and then publish them all in a burst, thus keeping the order of publication as the order of arrival. Note that in either case, the timestamp in each message's header reflects the time of it's origin.
-- **publish_tf**:
-  - boolean, enable/disable publishing static and dynamic TFs
-  - Defaults to True
-    - So, static TFs will be published by default
-    - If dynamic TFs are needed, user should set the param **tf_publish_rate** to >0.0 Hz
-  - If set to false, both static and dynamic TFs won't be published, even if the param **tf_publish_rate** is set to >0.0 Hz
-- **diagnostics_period**: 
-  - double, positive values set the period between diagnostics updates on the `/diagnostics` topic.
-  - 0 or negative values mean no diagnostics topic is published. Defaults to 0.</br>
-The `/diagnostics` topic includes information regarding the device temperatures and actual frequency of the enabled streams.
-
-<hr>
-
-## ROS2(Robot) vs Optical(Camera) Coordination Systems:
-
-- Point Of View:
-  - Imagine we are standing behind of the camera, and looking forward.
-  - Always use this point of view when talking about coordinates, left vs right IRs, position of sensor, etc..
-
-![image](https://user-images.githubusercontent.com/99127997/230150735-bc31fedf-d715-4e35-b462-fe2c338832c3.png)
-
-- ROS2 Coordinate System: (X: Forward, Y:Left, Z: Up)
-- Camera Optical Coordinate System: (X: Right, Y: Down, Z: Forward)
-- References: [REP-0103](https://www.ros.org/reps/rep-0103.html#coordinate-frame-conventions), [REP-0105](https://www.ros.org/reps/rep-0105.html#coordinate-frames)
-- All data published in our wrapper topics is optical data taken directly from our camera sensors.
-- static and dynamic TF topics publish optical CS and ROS CS to give the user the ability to move from one CS to other CS.
-
-<hr>
-
-## TF from coordinate A to coordinate B:
-
-- TF msg expresses a transform from coordinate frame "header.frame_id" (source) to the coordinate frame child_frame_id (destination) [Reference](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/Transform.html)
-- In RealSense cameras, the origin point (0,0,0) is taken from the left IR (infra1) position and named as "camera_link" frame
-- Depth, left IR and "camera_link" coordinates converge together.   
-- Our wrapper provide static TFs between each sensor coordinate to the camera base (camera_link)
-- Also, it provides TFs from each sensor ROS coordinates to its corrosponding optical coordinates.
-- Example of static TFs of RGB sensor and Infra2 (right infra) sensor of D435i module as it shown in rviz2: 
-![example](https://user-images.githubusercontent.com/99127997/230148106-0f79cbdb-c401-4d09-b386-a366af18e5f7.png)
-
-<hr>
-
-## Extrinsics from sensor A to sensor B:
-
-- Extrinsic from sensor A to sensor B means the position and orientation of sensor A relative to sensor B.
-- Imagine that B is the origin (0,0,0), then the Extrensics(A->B) describes where is sensor A relative to sensor B.
-- For example, depth_to_color, in D435i:
-  - If we look from behind of the D435i, extrinsic from depth to color, means, where is the depth in relative to the color.
-  - If we just look at the X coordinates, in the optical coordiantes (again, from behind) and assume that COLOR(RGB) sensor is (0,0,0), we can say that DEPTH sensor is on the right of RGB by 0.0148m (1.48cm).
-
-![d435i](https://user-images.githubusercontent.com/99127997/230220297-e392f0fc-63bf-4bab-8001-af1ddf0ed00e.png)
-
+or, without using the supplement launch files:
+```bash
+ros2 run realsense2_camera realsense2_camera_node --ros-args -p filters:=colorizer
 ```
-administrator@perclnx466 ~/ros2_humble $ ros2 topic echo /camera/camera/extrinsics/depth_to_color
-rotation:
-- 0.9999583959579468
-- 0.008895332925021648
-- -0.0020127370953559875
-- -0.008895229548215866
-- 0.9999604225158691
-- 6.045500049367547e-05
-- 0.0020131953060626984
-- -4.254872692399658e-05
-- 0.9999979734420776
-translation:
-- 0.01485931035131216
-- 0.0010161789832636714
-- 0.0005317096947692335
----
+or, with a demo config file:
+```bash
+ros2 launch realsense2_camera rs_launch.py config_file:="'$COLCON_PREFIX_PATH/realsense2_camera/share/realsense2_camera/config/d435i.yaml'"
 ```
 
-- Extrinsic msg is made up of two parts:
-  - float64[9] rotation  (Column - major 3x3 rotation matrix)
-  - float64[3] translation  (Three-element translation vector, in meters)
 
-<hr>
+This will stream all camera sensors and publish on the appropriate ROS topics.
 
-## Published Topics
-  
+### Published Topics
 The published topics differ according to the device and parameters.
 After running the above command with D435i attached, the following list of topics will be available (This is a partial list. For full one type `ros2 topic list`):
-- /camera/camera/aligned_depth_to_color/camera_info
-- /camera/camera/aligned_depth_to_color/image_raw
-- /camera/camera/color/camera_info
-- /camera/camera/color/image_raw
-- /camera/camera/color/metadata
-- /camera/camera/depth/camera_info
-- /camera/camera/depth/color/points
-- /camera/camera/depth/image_rect_raw
-- /camera/camera/depth/metadata
-- /camera/camera/extrinsics/depth_to_color
-- /camera/camera/imu
+- /camera/accel/imu_info
+- /camera/color/camera_info
+- /camera/color/image_raw
+- /camera/color/metadata
+- /camera/depth/camera_info
+- /camera/depth/color/points
+- /camera/depth/image_rect_raw
+- /camera/depth/metadata
+- /camera/extrinsics/depth_to_color
+- /camera/extrinsics/depth_to_infra1
+- /camera/extrinsics/depth_to_infra2
+- /camera/gyro/imu_info
+- /camera/imu
+- /camera/infra1/camera_info
+- /camera/infra1/image_rect_raw
+- /camera/infra2/camera_info
+- /camera/infra2/image_rect_raw
+- /camera/parameter_events
+- /camera/rosout
 - /diagnostics
 - /parameter_events
 - /rosout
 - /tf_static
 
-This will stream relevant camera sensors and publish on the appropriate ROS topics.
+>Using an L515 device the list differs a little by adding a 4-bit confidence grade (published as a mono8 image):
+>- /camera/confidence/camera_info
+>- /camera/confidence/image_rect_raw
+>
+>It also replaces the 2 infrared topic sets with the single available one:
+>- /camera/infra/camera_info
+>- /camera/infra/image_raw
 
-  Enabling accel and gyro is achieved either by adding the following parameters to the command line:</br>
-`ros2 launch realsense2_camera rs_launch.py pointcloud.enable:=true enable_gyro:=true enable_accel:=true` </br>
-or in runtime using the following commands:
-```
-ros2 param set /camera/camera enable_accel true
-ros2 param set /camera/camera enable_gyro true
-```
+The "/camera" prefix is the namesapce specified in the given launch file.
+When using D435 or D415, the gyro and accel topics wont be available. Likewise, other topics will be available when using T265 (see below).
 
-Enabling stream adds matching topics. For instance, enabling the gyro and accel streams adds the following topics:
-- /camera/camera/accel/imu_info
-- /camera/camera/accel/metadata
-- /camera/camera/accel/sample
-- /camera/camera/extrinsics/depth_to_accel
-- /camera/camera/extrinsics/depth_to_gyro
-- /camera/camera/gyro/imu_info
-- /camera/camera/gyro/metadata
-- /camera/camera/gyro/sample
+### Available Parameters:
+For the entire list of parameters type `ros2 param list`.
 
-<hr>
-
-## RGBD Topic
-
-RGBD new topic, publishing [RGB + Depth] in the same message (see RGBD.msg for reference). For now, works only with depth aligned to color images, as color and depth images are synchronized by frame time tag.
-
-These boolean paramters should be true to enable rgbd messages:
-
-- `enable_rgbd`: new paramter, to enable/disable rgbd topic, changeable during runtime
-- `align_depth.enable`: align depth images to rgb images
-- `enable_sync`: let librealsense sync between frames, and get the frameset with color and depth images combined
-- `enable_color` + `enable_depth`: enable both color and depth sensors
-
-The current QoS of the topic itself, is the same as Depth and Color streams (SYSTEM_DEFAULT)
-
-Example:
-```
-ros2 launch realsense2_camera rs_launch.py enable_rgbd:=true enable_sync:=true align_depth.enable:=true enable_color:=true enable_depth:=true 
-```
-
-<hr>
-
-## Metadata topic
-  
-The metadata messages store the camera's available metadata in a *json* format. To learn more, a dedicated script for echoing a metadata topic in runtime is attached. For instance, use the following command to echo the camera/depth/metadata topic:
-```
-python3 src/realsense-ros/realsense2_camera/scripts/echo_metadada.py /camera/camera/depth/metadata
-```
-  
-<hr>
-
-## Post-Processing Filters
-
-The following post processing filters are available:
- - ```align_depth```: If enabled, will publish the depth image aligned to the color image on the topic `/camera/camera/aligned_depth_to_color/image_raw`.
-   - The pointcloud, if created, will be based on the aligned depth image.
+- **serial_no**: will attach to the device with the given serial number (*serial_no*) number. Default, attach to the first (in an inner list) RealSense device.
+  - Note: serial number can also be defined with "_" prefix. For instance, serial number 831612073525 can be set in command line as `serial_no:=_831612073525`. That is a workaround until a better method will be found to ROS2's auto conversion of strings containing only digits into integers.
+- **usb_port_id**: will attach to the device with the given USB port (*usb_port_id*). i.e 4-1, 4-2 etc. Default, ignore USB port when choosing a device.
+- **device_type**: will attach to a device whose name includes the given *device_type* regular expression pattern. Default, ignore device type. For example, device_type:=d435 will match d435 and d435i. device_type=d435(?!i) will match d435 but not d435i.
+- **reconnect_timeout**: When the driver cannot connect to the device try to reconnect after this timeout (in seconds).
+- **wait_for_device_timeout**: If the specified device is not found, will wait *wait_for_device_timeout* seconds before exits. Defualt, *wait_for_device_timeout < 0*, will wait indefinitely.
+- **rosbag_filename**: Will publish topics from rosbag file.
+- **initial_reset**: On occasions the device was not closed properly and due to firmware issues needs to reset. If set to true, the device will reset prior to usage.
+- **align_depth**: If set to true, will publish additional topics for the "aligned depth to color" image.: ```/camera/aligned_depth_to_color/image_raw```, ```/camera/aligned_depth_to_color/camera_info```.</br>
+The pointcloud, if enabled, will be built based on the aligned_depth_to_color image.</br>
+- **filters**: any of the following options, separated by commas:</br>
  - ```colorizer```: will color the depth image. On the depth topic an RGB image will be published, instead of the 16bit depth values .
- - ```pointcloud```: will add a pointcloud topic `/camera/camera/depth/color/points`.
-    * The texture of the pointcloud can be modified using the `pointcloud.stream_filter` parameter.</br>
-    * The depth FOV and the texture FOV are not similar. By default, pointcloud is limited to the section of depth containing the texture. You can have a full depth to pointcloud, coloring the regions beyond the texture with zeros, by setting `pointcloud.allow_no_texture_points` to true.
-    * pointcloud is of an unordered format by default. This can be changed by setting `pointcloud.ordered_pc` to true.
- - ```hdr_merge```: Allows depth image to be created by merging the information from 2 consecutive frames, taken with different exposure and gain values.
-  - The way to set exposure and gain values for each sequence in runtime is by first selecting the sequence id, using the `depth_module.sequence_id` parameter and then modifying the `depth_module.gain`, and `depth_module.exposure`.
-  - To view the effect on the infrared image for each sequence id use the `filter_by_sequence_id.sequence_id` parameter.
-  - To initialize these parameters in start time use the following parameters:
-    - `depth_module.exposure.1`
-    - `depth_module.gain.1`
-    - `depth_module.exposure.2`
-    - `depth_module.gain.2`
-  - For in-depth review of the subject please read the accompanying [white paper](https://dev.intelrealsense.com/docs/high-dynamic-range-with-stereoscopic-depth-cameras).
+ - ```pointcloud```: will add a pointcloud topic `/camera/depth/color/points`.
+    * The texture of the pointcloud can be modified in rqt_reconfigure (see below) or using the parameters: `pointcloud_texture_stream` and `pointcloud_texture_index`. Run rqt_reconfigure to see available values for these parameters.</br>
+    * The depth FOV and the texture FOV are not similar. By default, pointcloud is limited to the section of depth containing the texture. You can have a full depth to pointcloud, coloring the regions beyond the texture with zeros, by setting `allow_no_texture_points` to true.
+    * pointcloud is of an unordered format by default. This can be changed by setting `ordered_pc` to true.
+ - ```hdr_merge```: Allows depth image to be created by merging the information from 2 consecutive frames, taken with different exposure and gain values. The way to set exposure and gain values for each sequence in runtime is by first selecting the sequence id, using the `stereo_module.sequence_id` parameter and then modifying the `stereo_module.gain`, and `stereo_module.exposure`.</br> To view the effect on the infrared image for each sequence id use the `sequence_id_filter.sequence_id` parameter.</br> To initialize these parameters in start time use the following parameters:</br>
+  `stereo_module.exposure.1`, `stereo_module.gain.1`, `stereo_module.exposure.2`, `stereo_module.gain.2`</br>
+  \* For in-depth review of the subject please read the accompanying [white paper](https://dev.intelrealsense.com/docs/high-dynamic-range-with-stereoscopic-depth-cameras).
 
-  - The following filters have detailed descriptions in : https://github.com/IntelRealSense/librealsense/blob/master/doc/post-processing-filters.md
-    - ```disparity_filter``` - convert depth to disparity before applying other filters and back.
-    - ```spatial_filter``` - filter the depth image spatially.
-    - ```temporal_filter``` - filter the depth image temporally.
-    - ```hole_filling_filter``` - apply hole-filling filter.
-    - ```decimation_filter``` - reduces depth scene complexity.
-
-Each of the above filters have it's own parameters, following the naming convention of `<filter_name>.<parameter_name>` including a `<filter_name>.enable` parameter to enable/disable it. 
-
-<hr>
-
-## Available services
   
-- device_info : retrieve information about the device - serial_number, firmware_version etc. Type `ros2 interface show realsense2_camera_msgs/srv/DeviceInfo` for the full list. Call example: `ros2 service call /camera/camera/device_info realsense2_camera_msgs/srv/DeviceInfo`
+ - The following filters have detailed descriptions in : https://github.com/IntelRealSense/librealsense/blob/master/doc/post-processing-filters.md
+   - ```disparity``` - convert depth to disparity before applying other filters and back.
+   - ```spatial``` - filter the depth image spatially.
+   - ```temporal``` - filter the depth image temporally.
+   - ```hole_filling``` - apply hole-filling filter.
+   - ```decimation``` - reduces depth scene complexity.
+- **enable_sync**: gathers closest frames of different sensors, infra red, color and depth, to be sent with the same timetag. This happens automatically when such filters as pointcloud are enabled.
+- ***<stream_type>*_width**, ***<stream_type>*_height**, ***<stream_type>*_fps**: <stream_type> can be any of *infra, color, fisheye, depth, gyro, accel, pose, confidence*. Sets the required format of the device. If the specified combination of parameters is not available by the device, the stream will be replaced with the default for that stream. Setting a value to 0, will choose the first format in the inner list. (i.e. consistent between runs but not defined).</br>*Note: for gyro accel and pose, only _fps option is meaningful.
+- ***<stream_type>*_qos**, ***<stream_type>*_info_qos**, and ***<stream_type>*_extrinsics_qos**: <stream_type> can be any of *infra, color, fisheye, depth, gyro, accel, pose, confidence, pointcloud, imu*. Sets the QoS by which the topic is published. Available values are the following strings: SYSTEM_DEFAULT, PARAMETER_EVENTS, SERVICES_DEFAULT, PARAMETERS, DEFAULT, SENSOR_DATA, HID_DEFAULT (= DEFAULT with depth of 100), EXTRINSICS_DEFAULT (= DEFAULT with depth of 1 and transient local durabilty).</br>
+**Notice:** ***<stream_type>*_info_qos** refers to both camera_info topics and metadata topics.
+- **enable_*<stream_name>***: Choose whether to enable a specified stream or not. Default is true for images and false for orientation streams. <stream_name> can be any of *infra1, infra2, color, depth, fisheye, fisheye1, fisheye2, gyro, accel, pose, confidence*.
 
-<hr>
+- ***<stream_name>*_frame_id**, ***<stream_name>*_optical_frame_id**, **aligned_depth_to_*<stream_name>*_frame_id**: Specify the different frame_id for the different frames. Especially important when using multiple cameras.
 
-## Efficient intra-process communication:
-  
-Our ROS2 Wrapper node supports zero-copy communications if loaded in the same process as a subscriber node. This can reduce copy times on image/pointcloud topics, especially with big frame resolutions and high FPS.
+- **base_frame_id**: defines the frame_id all static transformations refers to.
+- **odom_frame_id**: defines the origin coordinate system in ROS convention (X-Forward, Y-Left, Z-Up). pose topic defines the pose relative to that system.
 
-You will need to launch a component container and launch our node as a component together with other component nodes. Further details on "Composing multiple nodes in a single process" can be found [here](https://docs.ros.org/en/rolling/Tutorials/Composition.html).
+- **unite_imu_method**: The D435i and T265 cameras have built in IMU components which produce 2 unrelated streams: *gyro* - which shows angular velocity and *accel* which shows linear acceleration. Each with it's own frequency. By default, 2 corresponding topics are available, each with only the relevant fields of the message sensor_msgs::Imu are filled out.
+Setting *unite_imu_method* creates a new topic, *imu*, that replaces the default *gyro* and *accel* topics. The *imu* topic is published at the rate of the gyro. All the fields of the Imu message under the *imu* topic are filled out.
+   - **linear_interpolation**: Every gyro message is attached by the an accel message interpolated to the gyro's timestamp.
+   - **copy**: Every gyro message is attached by the last accel message.
+- **clip_distance**: remove from the depth image all values above a given value (meters). Disable by giving negative value (default)
+- **linear_accel_cov**, **angular_velocity_cov**: sets the variance given to the Imu readings. For the T265, these values are being modified by the inner confidence value.
+- **hold_back_imu_for_frames**: Images processing takes time. Therefor there is a time gap between the moment the image arrives at the wrapper and the moment the image is published to the ROS environment. During this time, Imu messages keep on arriving and a situation is created where an image with earlier timestamp is published after Imu message with later timestamp. If that is a problem, setting *hold_back_imu_for_frames* to *true* will hold the Imu messages back while processing the images and then publish them all in a burst, thus keeping the order of publication as the order of arrival. Note that in either case, the timestamp in each message's header reflects the time of it's origin.
+- **topic_odom_in**: For T265, add wheel odometry information through this topic. The code refers only to the *twist.linear* field in the message.
+- **calib_odom_file**: For the T265 to include odometry input, it must be given a [configuration file](https://github.com/IntelRealSense/librealsense/blob/master/unit-tests/resources/calibration_odometry.json). Explanations can be found [here](https://github.com/IntelRealSense/librealsense/pull/3462). The calibration is done in ROS coordinates system.
+- **publish_tf**: boolean, publish or not TF at all. Defaults to True.
+- **tf_publish_rate**: double, positive values mean dynamic transform publication with specified rate, all other values mean static transform publication. Defaults to 0 
+- **diagnostics_period**: double, positive values set the period between diagnostics updates on the `/diagnostics` topic. 0 or negative values mean no diagnostics topic is published. Defaults to 0.
+- **publish_odom_tf**: If True (default) publish TF from odom_frame to pose_frame.
+- **infra_rgb**: When set to True (default: False), it configures the infrared camera to stream in RGB (color) mode, thus enabling the use of a RGB image in the same frame as the depth image, potentially avoiding frame transformation related errors. When this feature is required, you are additionally required to also enable `enable_infra:=true` for the infrared stream to be enabled.
+  - **NOTE** The configuration required for `enable_infra` is independent of `enable_depth`
+  - **NOTE** To enable the Infrared stream, you should enable `enable_infra:=true` NOT `enable_infra1:=true` nor `enable_infra2:=true`
+  - **NOTE** This feature is only supported by Realsense sensors with RGB streams available from the `infra` cameras, which can be checked by observing the output of `rs-enumerate-devices`
 
-Further details on efficient intra-process communication can be found [here](https://docs.ros.org/en/humble/Tutorials/Intra-Process-Communication.html#efficient-intra-process-communication).
+### Available services:
+- enable : Start/Stop all streaming sensors. Usage example: `ros2 service call /camera/enable std_srvs/srv/SetBool "{data: False}"`
+- device_info : retrieve information about the device - serial_number, firmware_version etc. Type `ros2 interface show realsense2_camera_msgs/srv/DeviceInfo` for the full list. Call example: `ros2 service call /camera/device_info realsense2_camera_msgs/srv/DeviceInfo`
 
-  ### Example
-#### Manually loading multiple components into the same process
-* Start the component:
-  ```bash
-  ros2 run rclcpp_components component_container
-  ```
-
-* Add the wrapper:
-  ```bash
-  ros2 component load /ComponentManager realsense2_camera realsense2_camera::RealSenseNodeFactory -e use_intra_process_comms:=true
-  ```
-  Load other component nodes (consumers of the wrapper topics) in the same way.
-
-### Limitations
-
-* Node components are currently not supported on RCLPY
-* Compressed images using `image_transport` will be disabled as this isn't supported with intra-process communication
-
-### Latency test tool and launch file
-
-For getting a sense of the latency reduction, a frame latency reporter tool is available via a launch file.
-The launch file loads the wrapper and a frame latency reporter tool component into a single container (so the same process).
-The tool prints out the frame latency (`now - frame.timestamp`) per frame.
-
-The tool is not built unless asked for. Turn on `BUILD_TOOLS` during build to have it available:
+### Point Cloud
+Here is an example of how to start the camera node and make it publish the point cloud using the pointcloud option.
 ```bash
-colcon build --cmake-args '-DBUILD_TOOLS=ON'
+ros2 launch realsense2_camera demo_pointcloud_launch.py
+```
+An rviz2 node opens to watch the pointcloud:
+<p align="center"><img src="https://user-images.githubusercontent.com/40540281/122672460-42dd3f80-d1d4-11eb-8767-4e61a64ced5b.gif" /></p>
+
+
+### Aligned Depth Frames
+Here is an example of how to start the camera node and make it publish the aligned depth stream to color stream.
+```bash
+ros2 launch realsense2_camera rs_launch.py align_depth:=true
+```
+Looking at the published topics:
+
+```bash
+ros2 topic list
 ```
 
-The launch file accepts a parameter, `intra_process_comms`, controlling whether zero-copy is turned on or not. Default is on:
+#### **/camera/aligned_depth_to_color/camera_info**
+#### **/camera/aligned_depth_to_color/image_raw**
+#### /camera/color/camera_info
+#### /camera/color/image_raw
+#### /camera/depth/camera_info
+#### /camera/depth/image_rect_raw
+#### /camera/extrinsics/depth_to_color
+#### /parameter_events
+#### /rosout
+#### /tf
+#### /tf_static
+
+
+### View and Modify Camera Controls Params in runtime:
+The following command allow to change camera control values.
 ```bash
-ros2 launch realsense2_camera rs_intra_process_demo_launch.py intra_process_comms:=true
+ros2 run rqt_reconfigure rqt_reconfigure
+```
+<p align="center"><img src="https://user-images.githubusercontent.com/40540281/122672659-6f458b80-d1d5-11eb-9262-545d2073e1da.png" /></p>
+
+### Work with multiple cameras
+Every realsense2_camera node is an independent process. One can 2 nodes using a dedicated launch file:
+```bash
+ros2 launch realsense2_camera rs_multi_camera_launch.py camera_name1:=my_D435 device_type1:=d435 camera_name2:=my_d415 device_type2:=d415
+```
+or by specifying serial numbers and using default *camera1* and *camera2* node names:
+```
+ros2 launch realsense2_camera rs_multi_camera_launch.py serial_no1:=_036522070660 serial_no2:=_725112060349
+```
+or launch each from a separate terminal:
+```bash
+ros2 launch realsense2_camera rs_launch.py camera_name:=my_d415 serial_no:=_036522070660
+```
+and 
+```bash
+ros2 launch realsense2_camera rs_launch.py camera_name:=my_d435 serial_no:=_725112060349
+```
+Notice the importance of defining a different camera_name for each node as this is the header of the topics.
+
+
+## Using T265 ##
+
+### Start the camera node
+To start the camera node in ROS:
+
+```bash
+ros2 launch realsense2_camera rs_t265_launch.py
+```
+or, if you also have a d4xx connected, you can try out the launch file:
+```bash
+ros2 launch realsense2_camera rs_d400_and_t265_launch.py enable_fisheye12:=true enable_fisheye22:=true
+```
+- note: the parameters are called `enable_fisheye12` and `enable_fisheye22`. The node knows them as `enable_fisheye1` and `enable_fisheye2` but launch file runs 2 nodes and these parameters refer to the second one.
+
+To visualize the pose output and frames in RViz, start:
+```bash
+ros2 launch realsense2_camera demo_t265_launch.py
 ```
 
-</details>
+### realsense2_description package:
+For viewing included models, a separate package, realsense2_description, is included. For example:
+```bash
+ros2 launch realsense2_description view_model.launch.py model:=test_d415_camera.urdf.xacro
+```
+or, to list available models:
+```
+ros2 launch realsense2_description view_model.launch.py
+```
 
+## Still on the pipeline:
+* Support ROS2 life cycle.
+* Enable and disable sensors and filters.
 
-[rolling-badge]: https://img.shields.io/badge/-ROLLING-orange?style=flat-square&logo=ros
-[rolling]: https://docs.ros.org/en/rolling/index.html
-[humble-badge]: https://img.shields.io/badge/-HUMBLE-orange?style=flat-square&logo=ros
-[humble]: https://docs.ros.org/en/humble/index.html
-[iron-badge]: https://img.shields.io/badge/-IRON-orange?style=flat-square&logo=ros
-[iron]: https://docs.ros.org/en/iron/index.html
-[ubuntu22-badge]: https://img.shields.io/badge/-UBUNTU%2022%2E04-blue?style=flat-square&logo=ubuntu&logoColor=white
-[ubuntu22]: https://releases.ubuntu.com/jammy/
-[ubuntu20-badge]: https://img.shields.io/badge/-UBUNTU%2020%2E04-blue?style=flat-square&logo=ubuntu&logoColor=white
-[ubuntu20]: https://releases.ubuntu.com/focal/
+### Unit tests:
+Unit-tests are based on bag files saved on S3 server. These can be downloaded using the following commands:
+```bash
+cd ros2_ws
+wget "https://librealsense.intel.com/rs-tests/TestData/outdoors_1color.bag" -P "records/"
+wget "https://librealsense.intel.com/rs-tests/D435i_Depth_and_IMU_Stands_still.bag" -P "records/"
+```
+Then, unit-tests can be run using the following command (use either python or python3):
+```bash
+python3 src/realsense-ros/realsense2_camera/scripts/rs2_test.py --all
+```
+
+## License
+Copyright 2018 Intel Corporation
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this project except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+**Other names and brands may be claimed as the property of others*
